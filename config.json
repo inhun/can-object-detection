@@ -1,0 +1,7 @@
+{
+    "mqtt_engine": {
+        "broker_ip": "13.209.49.61",
+        "broker_port": "1883",
+        "pub_topic": "/order"
+    } 
+}
