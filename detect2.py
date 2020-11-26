@@ -10,6 +10,7 @@ import time
 import datetime
 import argparse
 import cv2
+import queue
 
 from PIL import Image
 
@@ -106,89 +107,95 @@ if __name__ == "__main__":
     NUM = cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
     target = 'demisoda apple'
-
+    q = queue.Queue()
     frame_num = 0
     while cap.isOpened():
         ret, img = cap.read()
         if ret is False:
             break
 
+        if (frame_num != 10):
+            q.put(img)
+            frame_num += 1
+        elif (frame_num == 10):
+            frame_num = 0
+            q.get_nowait()
+
             
-        frame_num = 0
-        # img = cv2.resize(img, (1280, 960), interpolation=cv2.INTER_CUBIC)
+            # img = cv2.resize(img, (1280, 960), interpolation=cv2.INTER_CUBIC)
 
-        RGBimg=changeBGR2RGB(img)
-        imgTensor = transforms.ToTensor()(RGBimg)
-        imgTensor, _ = pad_to_square(imgTensor, 0)
-        imgTensor = resize(imgTensor, 416)
-        
-        imgTensor = imgTensor.unsqueeze(0)
-        imgTensor = Variable(imgTensor.type(Tensor))
-        
+            RGBimg=changeBGR2RGB(img)
+            imgTensor = transforms.ToTensor()(RGBimg)
+            imgTensor, _ = pad_to_square(imgTensor, 0)
+            imgTensor = resize(imgTensor, 416)
+            
+            imgTensor = imgTensor.unsqueeze(0)
+            imgTensor = Variable(imgTensor.type(Tensor))
+            
 
-        with torch.no_grad():
-            prev_time = time.time()
+            with torch.no_grad():
+                prev_time = time.time()
 
-            detections = model(imgTensor)
-            current_time = time.time()
-            sec = current_time - prev_time
-            fps = 1/sec
-            frame_per_sec = "FPS: %0.1f" % fps
-            # print(frame_per_sec)
+                detections = model(imgTensor)
+                current_time = time.time()
+                sec = current_time - prev_time
+                fps = 1/sec
+                frame_per_sec = "FPS: %0.1f" % fps
+                # print(frame_per_sec)
 
 
-            detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres)
+                detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres)
 
-        a.clear()
-        if detections is not None:
-            a.extend(detections)
-        b=len(a)
-        if len(a):
-            for detections in a:
-                if detections is not None:
-                    
-                    detections = rescale_boxes(detections, opt.img_size, RGBimg.shape[:2])
-                    unique_labels = detections[:, -1].cpu().unique()
-                    n_cls_preds = len(unique_labels)
-                    for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
-                        if (classes[int(cls_pred)] == target):
+            a.clear()
+            if detections is not None:
+                a.extend(detections)
+            b=len(a)
+            if len(a):
+                for detections in a:
+                    if detections is not None:
+                        
+                        detections = rescale_boxes(detections, opt.img_size, RGBimg.shape[:2])
+                        unique_labels = detections[:, -1].cpu().unique()
+                        n_cls_preds = len(unique_labels)
+                        for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
+                            if (classes[int(cls_pred)] == target):
+                                box_w = x2 - x1
+                                box_h = y2 - y1
+                                me.publish({
+                                    'location': int(x1+box_w/2)
+                                })
+                                print(int(x1+box_w/2))
+
+                            '''    
                             box_w = x2 - x1
+                            # print(box_w)
                             box_h = y2 - y1
-                            me.publish({
-                                'location': int(x1+box_w/2)
-                            })
-                            print(int(x1+box_w/2))
+                            # print(y2, y1)
+                            color = [int(c) for c in colors[int(cls_pred)]]
+                            #print(cls_conf)
+                            img = cv2.rectangle(img, (x1, y1 + box_h), (x2, y1), color, 2)
+                            cv2.putText(img, classes[int(cls_pred)], (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                            cv2.putText(img, str("%.2f" % float(conf)), (x2, y2 - box_h), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                                        color, 2)
+                            '''
+                            # print(classes[int(cls_pred)], int(x1+box_w/2), int(480-(y1+box_h/2)))
 
-                        '''    
-                        box_w = x2 - x1
-                        # print(box_w)
-                        box_h = y2 - y1
-                        # print(y2, y1)
-                        color = [int(c) for c in colors[int(cls_pred)]]
-                        #print(cls_conf)
-                        img = cv2.rectangle(img, (x1, y1 + box_h), (x2, y1), color, 2)
-                        cv2.putText(img, classes[int(cls_pred)], (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                        cv2.putText(img, str("%.2f" % float(conf)), (x2, y2 - box_h), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                                    color, 2)
-                        '''
-                        # print(classes[int(cls_pred)], int(x1+box_w/2), int(480-(y1+box_h/2)))
+                #print()
+                #print()
+            #cv2.putText(img,"Hello World!",(400,50),cv2.FONT_HERSHEY_PLAIN,2.0,(0,0,255),2)
 
-            #print()
-            #print()
-        #cv2.putText(img,"Hello World!",(400,50),cv2.FONT_HERSHEY_PLAIN,2.0,(0,0,255),2)
+            cv2.imshow('frame', changeRGB2BGR(RGBimg))
+            #cv2.waitKey(0)
 
-        cv2.imshow('frame', changeRGB2BGR(RGBimg))
-        #cv2.waitKey(0)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    # time_end = time.time()
-    # time_total = time_end - time_begin
-    # print(NUM // time_total)
+            if cv2.waitKey(25) & 0xFF == ord('q'):
+                break
+        # time_end = time.time()
+        # time_total = time_end - time_begin
+        # print(NUM // time_total)
 
     cap.release()
     cv2.destroyAllWindows()
-    
+        
 
 
 
