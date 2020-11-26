@@ -10,7 +10,6 @@ import time
 import datetime
 import argparse
 import cv2
-import queue
 
 from PIL import Image
 
@@ -107,7 +106,6 @@ if __name__ == "__main__":
     NUM = cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
     target = 'demisoda apple'
-    q = queue.Queue()
     frame_num = 0
     while cap.isOpened():
         ret, img = cap.read()
@@ -115,11 +113,9 @@ if __name__ == "__main__":
             break
 
         if (frame_num != 10):
-            q.put(img)
             frame_num += 1
         elif (frame_num == 10):
             frame_num = 0
-            q.get_nowait()
 
             
             # img = cv2.resize(img, (1280, 960), interpolation=cv2.INTER_CUBIC)
