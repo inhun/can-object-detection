@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
     me = MQTTEngine({
-        "broker_ip": "localhost",
+        "broker_ip": "192.168.77.1",
         "broker_port": 1883,
         "pub_topic": "/beverage/location"
     })
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     client.on_subscribe = on_subscribe
     client.on_message = on_message
 
-    client.connect('localhost', 1883)
+    client.connect('192.168.77.1', 1883)
 
     client.subscribe('/beverage/order')
     client.loop_forever()
