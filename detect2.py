@@ -18,11 +18,20 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torch.autograd import Variable
 
+import json
+import logging
+
+import paho.mqtt.client as mqtt
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 
 from mqtt_engine import MQTTEngine
+
+
+target = ''
+
 
 def changeRGB2BGR(img):
     r = img[:, :, 0].copy()
@@ -46,6 +55,28 @@ def changeBGR2RGB(img):
     img[:, :, 2] = b
 
     return img
+
+
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("connected OK")
+    else:
+        print("Bad connection Returned code=", rc)
+
+
+def on_disconnect(client, userdata, flags, rc=0):
+    print(str(rc))
+
+
+def on_subscribe(client, userdata, mid, granted_qos):
+    print("subscribed: " + str(mid) + " " + str(granted_qos))
+
+
+def on_message(client, userdata, msg):
+    global target
+    beverage = json.loads(msg.payload.decode("utf-8"))
+    target = beverage['beverage']
+ 
 
 
 if __name__ == "__main__":
@@ -92,11 +123,28 @@ if __name__ == "__main__":
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
     me = MQTTEngine({
-        "broker_ip": "192.168.0.31",
+        "broker_ip": "localhost",
         "broker_port": 1883,
         "pub_topic": "/beverage/location"
     })
     me.connect()
+
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
+    client.on_subscribe = on_subscribe
+    client.on_message = on_message
+
+    client.connect('localhost', 1883)
+
+    client.subscribe('/beverage/order')
+    client.loop_forever()
+
+    if (target):
+        client.disconnect()
+
+
+    print(target)
 
     cap = cv2.VideoCapture('data/cafe7.avi')
     #cap = cv2.VideoCapture(0)
@@ -105,7 +153,6 @@ if __name__ == "__main__":
     time_begin = time.time()
     NUM = cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
-    target = 'demisoda apple'
     frame_num = 0
     while cap.isOpened():
         ret, img = cap.read()
@@ -115,7 +162,7 @@ if __name__ == "__main__":
         if (frame_num != 10):
             frame_num += 1
         elif (frame_num == 10):
-            frame_num = 0
+            frame_num = 0   
 
             
             # img = cv2.resize(img, (1280, 960), interpolation=cv2.INTER_CUBIC)

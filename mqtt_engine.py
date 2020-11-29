@@ -17,6 +17,7 @@ class MQTTEngine:
         self.broker_port = cfg['broker_port']
         self.pub_topic = cfg['pub_topic']
         
+        self.beverage = ''
 
         # MQTT Client
         self.client = mqtt.Client()
@@ -36,6 +37,7 @@ class MQTTEngine:
         self.client.connect_async(self.broker_ip, self.broker_port)
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
+        self.client.on_message = self.on_message
         self.client.loop_start()
 
     def close(self):
@@ -51,6 +53,11 @@ class MQTTEngine:
         '''
         self.client.publish(self.pub_topic, json.dumps(body), 1)
 
+    def subscribe(self, topic):
+
+        self.client.subscribe(topic, 2)
+
+
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             self.logger.info('made connection with MQTT broker successfully.')
@@ -59,3 +66,16 @@ class MQTTEngine:
 
     def _on_disconnect(self, client, userdata, flags, rc=0):
         self.logger.info('MQTT connection disconnected.')
+
+
+
+    def on_message(self, client, userdata, msg):
+        beverage = json.loads(msg.payload.decode("utf-8"))
+        beverage = beverage['beverage']
+
+        self.beverage = beverage
+
+
+
+    def get_beverage(self):
+        return self.beverage
