@@ -47,11 +47,11 @@ class MQTTEngine:
         self.client.loop_stop()
         self.client.disconnect()
 
-    def publish(self, body):
+    def publish(self, topic, body):
         '''
         Publish message as the specific topic.
         '''
-        self.client.publish(self.pub_topic, json.dumps(body), 1)
+        self.client.publish(topic, json.dumps(body), 1)
 
     def subscribe(self, topic):
 

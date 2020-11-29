@@ -151,8 +151,8 @@ if __name__ == "__main__":
     colors = np.random.randint(0, 255, size=(len(classes), 3), dtype="uint8")
     a=[]
     time_begin = time.time()
-    NUM = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-
+    
+    target_location = 0
     frame_num = 0
     while cap.isOpened():
         ret, img = cap.read()
@@ -204,10 +204,15 @@ if __name__ == "__main__":
                             if (classes[int(cls_pred)] == target):
                                 box_w = x2 - x1
                                 box_h = y2 - y1
-                                me.publish({
+
+                                target_location = int(x1+box_w/2)
+
+                                me.publish({'/beverage/location'
                                     'location': int(x1+box_w/2)
                                 })
                                 print(int(x1+box_w/2))
+
+
 
                             '''    
                             box_w = x2 - x1
@@ -227,8 +232,11 @@ if __name__ == "__main__":
                 #print()
             #cv2.putText(img,"Hello World!",(400,50),cv2.FONT_HERSHEY_PLAIN,2.0,(0,0,255),2)
 
+
             cv2.imshow('frame', changeRGB2BGR(RGBimg))
             #cv2.waitKey(0)
+            if (315 <= target_location <= 325):
+                break
 
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
@@ -239,6 +247,29 @@ if __name__ == "__main__":
     cap.release()
     cv2.destroyAllWindows()
         
+
+
+
+    detector = cv2.QRCodeDetector()
+    cap = cv2.VideoCapture(0)
+
+    while (cap.isOpened()):
+        ret, img = cap.read()
+
+        if (ret is False):
+            break
+    
+        data, bbox, straight_qrcode = detector.detectAndDecode(img)
+
+        if (bbox is not None):
+            if (data == target):
+                me.publish('/qr', 'OK')
+
+
+        cv2.imshow('img', img)
+    
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
 
 
